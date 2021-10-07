@@ -3,10 +3,15 @@
 # @File: yolov5_2_coco.py
 # @Author: SWHL
 # @Contact: liekkaskono@163.com
+#
+# this modification: 
+# - use symlink to link to image
+# - get image id from file name 
 import argparse
 from pathlib import Path
 import json
 import shutil
+import os
 
 import cv2
 
@@ -98,6 +103,11 @@ class YOLOV5ToCOCO(object):
         images = []
         annotations = []
         for img_id, img_path in enumerate(img_paths, 1):
+
+            # img_id from filename
+            print(str(img_id) + "/" + str(len(img_paths)), end="\r")
+            img_id = int(Path(img_path).stem)
+
             img_path = Path(img_path)
 
             if not img_path.exists():
@@ -109,13 +119,27 @@ class YOLOV5ToCOCO(object):
             imgsrc = cv2.imread(str(img_path))
             height, width = imgsrc.shape[:2]
 
-            dest_file_name = f'{img_id:012d}.jpg'
+            # dest_file_name = f'{img_id:012d}.jpg'
+            dest_file_name = img_path.name
+
+
+            if img_path.is_symlink:
+                img_path = img_path.resolve()
+            else:
+                print("* * *\nnot link")
+                print("this is weired ...\n* * *")
+
+
             save_img_path = target_img_path / dest_file_name
 
-            if img_path.suffix.lower() == ".jpg":
-                shutil.copyfile(img_path, save_img_path)
-            else:
-                cv2.imwrite(str(save_img_path), imgsrc)
+
+            os.symlink(os.path.relpath(img_path, save_img_path.parent), save_img_path)
+
+
+            # if img_path.suffix.lower() == ".jpg":
+            #     shutil.copyfile(img_path, save_img_path)
+            # else:
+            #     cv2.imwrite(str(save_img_path), imgsrc)
 
             images.append({
                 'date_captured': '2021',
@@ -197,7 +221,7 @@ class YOLOV5ToCOCO(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('Datasets converter from YOLOV5 to COCO')
     parser.add_argument('--dir_path', type=str,
-                        default='datasets/tmp/YOLOV5',
+                        default='../data_train/CrowdRgbdSafety/person_head',
                         help='Dataset root path')
     args = parser.parse_args()
 
